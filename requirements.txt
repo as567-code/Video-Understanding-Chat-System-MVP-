@@ -1,0 +1,30 @@
+###############################
+# Video Chat System - Requirements
+#
+# All packages are FREE and open-source.
+# Prefer CPU install by default; GPU optional if available.
+###############################
+
+# Web app
+streamlit>=1.37.0
+python-dotenv>=1.0.1
+
+# Video & image processing
+opencv-python>=4.9.0.80
+numpy>=1.26.4
+Pillow>=10.3.0
+tqdm>=4.66.4
+
+# Hugging Face ecosystem (vision + LLMs)
+transformers>=4.44.0
+accelerate>=0.33.0
+huggingface_hub>=0.24.0
+safetensors>=0.4.3
+sentencepiece>=0.2.0  # needed for Flan-T5 and similar models
+
+# PyTorch (CPU by default)
+# Leave unpinned to allow pip to pick the correct wheel for your platform.
+torch
+torchvision
+
+
