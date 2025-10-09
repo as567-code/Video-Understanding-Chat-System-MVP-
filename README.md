@@ -65,10 +65,10 @@ Then open the provided local URL in your browser.
 ### Roadmap
 - [x] Project scaffold
 - [x] Requirements
-- [ ] Implement frame extraction in `video_processor.py`
-- [ ] Add BLIP-2 captioning in `vision_analyzer.py`
-- [ ] Implement chat handler in `chat_handler.py`
-- [ ] Build Streamlit UI in `app.py`
+- [x] Implement frame extraction in `video_processor.py`
+- [x] Add BLIP-2 captioning in `vision_analyzer.py`
+- [x] Implement chat handler in `chat_handler.py`
+- [x] Build Streamlit UI in `app.py`
 
 ### License
 This project uses only FREE and open-source components. Verify model licenses before distribution.
