@@ -27,4 +27,11 @@ sentencepiece>=0.2.0  # needed for Flan-T5 and similar models
 torch
 torchvision
 
+# Google Gemini (GenAI) SDKs
+google-genai>=0.5.0
+google-generativeai>=0.8.3
+
+# Qwen Vision-Language Model Utils
+qwen-vl-utils
+
 

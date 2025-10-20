@@ -1,49 +1,45 @@
-# Virtual environment
-.venv/
-venv/
-env/
-
-# Python cache files
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
 
-# IDE files
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables (contains API keys!)
+.env
+.env.local
+.env.*.local
+
+# Streamlit
+.streamlit/
+streamlit.log
+
+# Temporary files
+tmp_uploads/
+*.log
+nohup.out
+
+# Model cache (too large for git)
+.cache/
+huggingface_cache/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Logs
-*.log
-logs/
-
-# Temporary files
-tmp_uploads/
-*.tmp
-
-# Cache directories (but keep structure)
-.cache/
-.cache/huggingface/hub/
-
-# Environment files with secrets (if any)
-.env.local
-.env.*.local
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# Model files (optional - comment out if you want to include models)
-.cache/huggingface/hub/models*/
+# Test files
+test_*.py
+*_test.py

@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import os
 
-# Set HF_HOME environment variable BEFORE any imports
-# This ensures models download to SSD cache, not MacBook internal drive
-os.environ['HF_HOME'] = '/Volumes/PortableSSD/video-chat-system/.cache/huggingface'
+# Configure HF_HOME before any Hugging Face imports.
+# Prefer an existing environment value; otherwise default to SSD cache location.
+if not os.environ.get('HF_HOME'):
+    # Use SSD location as mentioned in QUICK_START.md
+    default_cache = "/Volumes/PortableSSD/huggingface_cache"
+    os.makedirs(default_cache, exist_ok=True)
+    os.environ['HF_HOME'] = default_cache
 
 # Load other environment variables
 from dotenv import load_dotenv
@@ -21,8 +25,8 @@ import json
 import csv
 
 from video_processor import extract_frames, format_timestamp, FrameData
-from vision_analyzer import SimpleVisionCaptioner, Caption, make_captions_for_timestamps
-from chat_handler import SimpleVideoChat
+from vision_analyzer import SimpleVisionCaptioner, QwenVisionCaptioner, Caption, make_captions_for_timestamps
+from chat_handler import SimpleVideoChat, GeminiVideoChat
 
 
 st.set_page_config(page_title="Video Understanding & Chat", layout="wide")
@@ -37,8 +41,20 @@ def get_captioner(
     prompt: str,
     batch_size: int,
     device_choice: str,
-) -> SimpleVisionCaptioner:
+) -> Any:
     device = None if device_choice == "auto" else device_choice
+    
+    # Check if Qwen2-VL model is selected
+    if "qwen2-vl" in model_name.lower():
+        return QwenVisionCaptioner(
+            model_name=model_name,
+            max_new_tokens=int(max_new_tokens),
+            prompt=prompt,
+            batch_size=int(batch_size),
+            device=device,
+        )
+    
+    # Default to BLIP captioner
     return SimpleVisionCaptioner(
         model_name=model_name,
         max_new_tokens=int(max_new_tokens),
@@ -55,7 +71,21 @@ def get_chat_model(
     max_input_tokens: int,
     relevance_window: int,
     device_choice: str,
-) -> SimpleVideoChat:
+) -> Any:
+    # If Gemini is selected, initialize Gemini client using env key
+    if model_name.lower().startswith("gemini"):
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("Missing GEMINI_API_KEY in environment for Gemini models.")
+        return GeminiVideoChat(
+            model_name=model_name,
+            api_key=api_key,
+            max_new_tokens=int(max_new_tokens),
+            max_input_tokens=int(max_input_tokens),
+            relevance_window=int(relevance_window),
+        )
+
+    # Default to local Flan-T5 model
     device = None if device_choice == "auto" else device_choice
     return SimpleVideoChat(
         model_name=model_name,
@@ -84,6 +114,7 @@ def main() -> None:
             "Vision model",
             [
                 "Salesforce/blip-image-captioning-base",
+                "Qwen/Qwen2-VL-2B-Instruct",
             ],
             index=0,
         )
@@ -100,12 +131,13 @@ def main() -> None:
             [
                 "google/flan-t5-base",
                 "google/flan-t5-small",
+                "gemini-2.5-flash",
             ],
-            index=0,
+            index=2,
         )
-        chat_max_input_tokens = st.number_input("Chat max input tokens", min_value=256, max_value=3000, value=1500, step=50)
-        chat_max_new_tokens = st.number_input("Chat max new tokens", min_value=16, max_value=256, value=128, step=16)
-        relevance_window = st.number_input("Relevance window (captions)", min_value=1, max_value=32, value=8, step=1)
+        chat_max_input_tokens = st.number_input("Chat max input tokens", min_value=256, max_value=8000, value=4096, step=256)
+        chat_max_new_tokens = st.number_input("Chat max new tokens", min_value=64, max_value=8192, value=2048, step=64)
+        relevance_window = st.number_input("Relevance window (captions)", min_value=1, max_value=32, value=10, step=1)
 
         st.subheader("Runtime")
         device_choice = st.selectbox("Device", ["auto", "cpu", "mps", "cuda"], index=0)
@@ -191,7 +223,11 @@ def main() -> None:
             for idx, frame_data in enumerate(frames[:preview_n]):
                 col = cols[idx % 5]
                 with col:
-                    st.image(frame_data.image, caption=format_timestamp(frame_data.timestamp_s), use_column_width=True)
+                    st.image(
+                        frame_data.image,
+                        caption=format_timestamp(frame_data.timestamp_s),
+                        use_container_width=True,
+                    )
 
         # Caption frames
         captions: List[Caption]
@@ -281,6 +317,13 @@ def main() -> None:
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
                     try:
+                        # Check API key if using Gemini
+                        if chat_model.lower().startswith("gemini"):
+                            api_key_check = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+                            if not api_key_check:
+                                st.error("⚠️ GEMINI_API_KEY or GOOGLE_API_KEY not found in environment. Please set it to use Gemini models.")
+                                st.stop()
+                        
                         chat = get_chat_model(
                             model_name=chat_model,
                             max_new_tokens=int(chat_max_new_tokens),
@@ -289,10 +332,25 @@ def main() -> None:
                             device_choice=device_choice,
                         )
                         result = chat.answer(time_str_and_caps, user_question)
-                        st.markdown(result.answer)
-                        st.session_state["messages"].append({"role": "assistant", "content": result.answer})
+                        
+                        # Debug: Log the result
+                        if not result.answer or result.answer.strip() == "":
+                            st.warning("⚠️ Model returned an empty response. This might be an API issue.")
+                            answer_to_display = "I couldn't generate a response. Please try again."
+                        else:
+                            answer_to_display = result.answer
+                        
+                        st.markdown(answer_to_display)
+                        st.session_state["messages"].append({"role": "assistant", "content": answer_to_display})
+                        
+                        # Show token usage if available
+                        if result.prompt_tokens > 0 or result.generated_tokens > 0:
+                            st.caption(f"📊 Tokens - Input: {result.prompt_tokens}, Output: {result.generated_tokens}")
                     except Exception as e:
-                        st.error(f"Chat failed: {e}")
+                        error_msg = f"Chat failed: {str(e)}"
+                        st.error(error_msg)
+                        import traceback
+                        st.code(traceback.format_exc())
 
         col1, col2 = st.columns(2)
         with col1:

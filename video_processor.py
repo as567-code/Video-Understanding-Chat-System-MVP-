@@ -146,5 +146,3 @@ def format_timestamp(seconds: float) -> str:
     secs = whole % 60
     millis = int(round((seconds - whole) * 1000))
     return f"{minutes:02d}:{secs:02d}.{millis:03d}"
-
-
