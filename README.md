@@ -22,7 +22,7 @@ video-chat-system/
 ├── vision_analyzer.py    # BLIP-2 image captioning
 ├── chat_handler.py       # Q&A over frame descriptions
 ├── requirements.txt
-├── .env                  # Optional environment variables
+├── .env                  
 └── README.md
 ```
 
